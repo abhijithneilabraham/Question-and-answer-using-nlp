@@ -11,5 +11,6 @@ from keras import layers
 from keras.layers import recurrent
 from keras.models import Model
 from keras.preprocessing.sequence import pad_sequences
+from keras.preprocessing.text import Tokenizer
 
-
+tokenizer=Tokenizer()
