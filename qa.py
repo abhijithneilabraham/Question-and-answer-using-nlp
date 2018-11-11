@@ -14,3 +14,12 @@ from keras.preprocessing.sequence import pad_sequences
 from keras.preprocessing.text import Tokenizer
 
 tokenizer=Tokenizer()
+
+def parse_stories(lines,only_supporting=False):
+    data=[]
+    story=[]
+    for line in lines:
+        line=line.decode('utf-8').strip()
+        nid,line=line.split(' ',1)
+        nid=int(nid)
+        
