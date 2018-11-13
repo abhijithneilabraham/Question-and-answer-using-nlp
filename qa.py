@@ -47,11 +47,28 @@ def get_stories(f, only_supporting=False, max_length=None):
     any stories longer than max_length tokens will be discarded.
     '''
     data=parse_stories(f.readlines(),only_supporting=only_supporting)
-    flatten=lambda data: reduce(lambda x,y:x+y,data) 
+    flatten=lambda data: reduce(lambda x,y:x+y,data) #x is the word index and y gives the word postion in a matrix and this arrages the answer story in order
     '''lambda is a small anonymous function .
     the reduce function here does the specified function(here lambda) and does apply it in a sequence(here data).
     '''
     data=[(flatten(story),q,answer) for story,q,answer in data if not max_length or len(flatten(story))<maxlength]
     return data
 
-    
+ def vectorize_stories(data, word_idx, story_maxlen, query_maxlen):
+     xs=[]
+     xqs=[]
+     ys=[]
+     for story,query,answer in data:
+         x=[word_idx[w]for w in story]
+         xq = [word_idx[w] for w in query]
+         #index 0 is reserved
+         y=np.zeros(len(word_idx)+1)
+         y[word_idx[answer]]=1
+         xs.append(x)
+         xqs.append(xq)
+         ys.append(y)
+      return (pad_sequences(xs, maxlen=story_maxlen),
+            pad_sequences(xqs, maxlen=query_maxlen), np.array(ys))   #padding means setting all to equal lengths
+      
+         
+         
