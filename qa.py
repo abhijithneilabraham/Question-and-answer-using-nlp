@@ -39,3 +39,17 @@ def parse_stories(lines,only_supporting=False):#for keeping only the supporting 
             story.append(sent)
             
     return data      
+def get_stories(f, only_supporting=False, max_length=None):
+     '''Given a file name, read the file, retrieve the stories,
+    and then convert the sentences into a single story.
+
+    If max_length is supplied,
+    any stories longer than max_length tokens will be discarded.
+    '''
+    data=parse_stories(f.readlines(),only_supporting=only_supporting)
+    flatten=lambda data: reduce(lambda x,y:x+y,data) 
+    '''lambda is a small anonymous function 
+    the reduce function here does the specified function(here lambda) and does apply it in a sequence.
+    '''
+    
+    
