@@ -26,7 +26,7 @@ def parse_stories(lines,only_supporting=False):#for keeping only the supporting 
             story= []
         if '\t' in line:
             q,a,supporting=line.split('\t')
-            q=tokenize(q)
+            q=tokenize(q)#used to tokenize the question into keywords such that the related answer can be found from the keyword
             if only_supporting: #selecting the related substory only
                 supporting=map(int,supporting.split()) #map applies a function to each item in the iterable
                 substory=[story[i-1] for i in supporting]
@@ -48,8 +48,10 @@ def get_stories(f, only_supporting=False, max_length=None):
     '''
     data=parse_stories(f.readlines(),only_supporting=only_supporting)
     flatten=lambda data: reduce(lambda x,y:x+y,data) 
-    '''lambda is a small anonymous function 
-    the reduce function here does the specified function(here lambda) and does apply it in a sequence.
+    '''lambda is a small anonymous function .
+    the reduce function here does the specified function(here lambda) and does apply it in a sequence(here data).
     '''
-    
+    data=[(flatten(story),q,answer) for story,q,answer in data if not max_length or len(flatten(story))<maxlength]
+    return data
+
     
