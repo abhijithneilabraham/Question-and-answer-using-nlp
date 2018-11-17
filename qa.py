@@ -73,4 +73,14 @@ def get_stories(f, only_supporting=False, max_length=None):
             pad_sequences(xqs, maxlen=query_maxlen), np.array(ys))   #padding means setting all to equal lengths
       
          
+RNN=recurrent.LSTM
+EMBED_HIDDEN_SIZE = 50
+SENT_HIDDEN_SIZE = 100
+QUERY_HIDDEN_SIZE = 100
+BATCH_SIZE = 32
+EPOCHS = 40
+print('RNN / Embed / Sent / Query = {}, {}, {}, {}'.format(RNN,
+                                                           EMBED_HIDDEN_SIZE,
+                                                           SENT_HIDDEN_SIZE,
+                                                           QUERY_HIDDEN_SIZE))      
          
