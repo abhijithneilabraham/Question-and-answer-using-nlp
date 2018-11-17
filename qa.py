@@ -82,5 +82,14 @@ EPOCHS = 40
 print('RNN / Embed / Sent / Query = {}, {}, {}, {}'.format(RNN,
                                                            EMBED_HIDDEN_SIZE,
                                                            SENT_HIDDEN_SIZE,
-                                                           QUERY_HIDDEN_SIZE))      
+                                                           QUERY_HIDDEN_SIZE))  
+vocab=set()
+for story,q,answer in train+test:
+    vocab |= set(story + q + [answer])
+    
+vocab=sorted(vocab)    
+vocab_size==len(vocab)+1
+word_idx = dict((c, i + 1) for i, c in enumerate(vocab))
+story_maxlen = max(map(len, (x for x, _, _ in train + test)))
+query_maxlen = max(map(len, (x for _, x, _ in train + test)))
          
