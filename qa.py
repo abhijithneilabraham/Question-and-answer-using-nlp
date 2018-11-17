@@ -13,8 +13,10 @@ from keras.models import Model
 from keras.preprocessing.sequence import pad_sequences
 from keras.preprocessing.text import Tokenizer
 from nltk.tokenize import word_tokenize
+from keras_bert import get_base_dict, get_model, gen_batch_inputs
+
 def tokenize(x):
-    return word_tokenize(x) #splitting the words with delimiters
+    return word_tokenize(x) #splitting the words with delimiters#if this doesnt work use python split functions
 def parse_stories(lines,only_supporting=False):#for keeping only the supporting answer
     data=[]
     story=[]
