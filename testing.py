@@ -159,20 +159,19 @@ merged = layers.Dropout(0.3)(merged)
 preds = layers.Dense(vocab_size, activation='softmax')(merged)
 
 model = get_model(
-    token_num=len(story_maxlen),
+    token_num=story_maxlen,
     head_num=5,
     transformer_num=12,
     embed_dim=25,
     feed_forward_dim=100,
     seq_len=20,
     pos_num=20,
-    dropout=0.05,
+    
 )
 token_dict = get_base_dict()  # A dict that contains some special tokens
-for pairs in vocab:
-    for token in pairs[0] + pairs[1]:
-        if token not in token_dict:
-            token_dict[token] = len(token_dict)
+for token in story:
+    if token not in token_dict:
+        token_dict[token] = len(token_dict)
 token_list = list(token_dict.keys())  # Used for selecting a random word
 def _generator():
     while True:
@@ -195,7 +194,7 @@ model.fit_generator(
     epochs=100,
     validation_data=_generator(),
     validation_steps=100,
-    callbacks=[keras.callbacks.EarlyStopping(monitor='val_loss', patience=5)
+    callbacks=[callbacks.EarlyStopping(monitor='val_loss', patience=5)
     ],
 )
 
