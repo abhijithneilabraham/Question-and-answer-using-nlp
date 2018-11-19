@@ -93,4 +93,66 @@ word_idx = dict((c, i + 1) for i, c in enumerate(vocab))
 story_maxlen = max(map(len, (x for x, _, _ in train + test)))
 query_maxlen = max(map(len, (x for _, x, _ in train + test)))
 x, xq, y = vectorize_stories(train, word_idx, story_maxlen, query_maxlen)
-tx, txq, ty = vectorize_stories(test, word_idx, story_maxlen, query_maxlen)       
+tx, txq, ty = vectorize_stories(test, word_idx, story_maxlen, query_maxlen) 
+print('vocab = {}'.format(vocab))
+print('x.shape = {}'.format(x.shape))
+print('xq.shape = {}'.format(xq.shape))
+print('y.shape = {}'.format(y.shape))
+print('story_maxlen, query_maxlen = {}, {}'.format(story_maxlen, query_maxlen))
+
+print('Build model...')
+sentence = layers.Input(shape=(story_maxlen,), dtype='int32')
+encoded_sentence = layers.Embedding(vocab_size, EMBED_HIDDEN_SIZE)(sentence)
+encoded_sentence = layers.Dropout(0.3)(encoded_sentence)
+
+question = layers.Input(shape=(query_maxlen,), dtype='int32')
+encoded_question = layers.Embedding(vocab_size, EMBED_HIDDEN_SIZE)(question)
+encoded_question = layers.Dropout(0.3)(encoded_question)
+encoded_question = RNN(EMBED_HIDDEN_SIZE)(encoded_question)
+encoded_question = layers.RepeatVector(story_maxlen)(encoded_question)
+
+merged = layers.add([encoded_sentence, encoded_question])
+merged = RNN(EMBED_HIDDEN_SIZE)(merged)
+merged = layers.Dropout(0.3)(merged)
+preds = layers.Dense(vocab_size, activation='softmax')(merged)
+
+model = get_model(
+    token_num=len(story_maxlen),
+    head_num=5,
+    transformer_num=12,
+    embed_dim=25,
+    feed_forward_dim=100,
+    seq_len=20,
+    pos_num=20,
+    dropout=0.05,
+)
+
+def _generator():
+    while True:
+        yield gen_batch_inputs(
+            vocab,
+            token_dict,
+            token_list,
+            seq_len=20,
+            mask_rate=0.3,
+            swap_sentence_rate=1.0,
+        )
+model.compile(optimizer='adam',
+              loss='categorical_crossentropy',
+              metrics=['accuracy'])
+
+print('Training')
+model.fit_generator(
+    generator=_generator(),
+    steps_per_epoch=1000,
+    epochs=100,
+    validation_data=_generator(),
+    validation_steps=100,
+    callbacks=[
+        keras.callbacks.EarlyStopping(monitor='val_loss', patience=5)
+    ],
+)
+
+loss, acc = model.evaluate([tx, txq], ty,
+                           batch_size=BATCH_SIZE)
+print('Test loss / test accuracy = {:.4f} / {:.4f}'.format(loss, acc))      
