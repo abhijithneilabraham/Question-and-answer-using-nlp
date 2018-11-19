@@ -92,4 +92,5 @@ vocab_size==len(vocab)+1
 word_idx = dict((c, i + 1) for i, c in enumerate(vocab))
 story_maxlen = max(map(len, (x for x, _, _ in train + test)))
 query_maxlen = max(map(len, (x for _, x, _ in train + test)))
-         
+x, xq, y = vectorize_stories(train, word_idx, story_maxlen, query_maxlen)
+tx, txq, ty = vectorize_stories(test, word_idx, story_maxlen, query_maxlen)       
