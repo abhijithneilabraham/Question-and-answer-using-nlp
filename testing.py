@@ -176,7 +176,7 @@ token_list = list(token_dict.keys())  # Used for selecting a random word
 def _generator():
     while True:
         yield gen_batch_inputs(
-            vocab,
+            [sentence, question],
             token_dict,
             token_list,
             seq_len=20,
