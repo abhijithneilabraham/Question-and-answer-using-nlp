@@ -1,3 +1,4 @@
+
 from __future__ import print_function
 from functools import reduce
 import re
@@ -8,40 +9,54 @@ import numpy as np
 from keras.utils.data_utils import get_file
 from keras.layers.embeddings import Embedding
 from keras import layers
+from keras import callbacks
 from keras.layers import recurrent
 from keras.models import Model
 from keras.preprocessing.sequence import pad_sequences
-from keras.preprocessing.text import Tokenizer
-from nltk.tokenize import word_tokenize
 from keras_bert import get_base_dict, get_model, gen_batch_inputs
 
-def tokenize(x):
-    return word_tokenize(x) #splitting the words with delimiters#if this doesnt work use python split functions
-def parse_stories(lines,only_supporting=False):#for keeping only the supporting answer
-    data=[]
-    story=[]
+
+def tokenize(sent):
+    '''Return the tokens of a sentence including punctuation.
+
+    >>> tokenize('Bob dropped the apple. Where is the apple?')
+    ['Bob', 'dropped', 'the', 'apple', '.', 'Where', 'is', 'the', 'apple', '?']
+    '''
+    return [x.strip() for x in re.split('(\W+)?', sent) if x.strip()]
+
+
+def parse_stories(lines, only_supporting=False):
+    '''Parse stories provided in the bAbi tasks format
+
+    If only_supporting is true,
+    only the sentences that support the answer are kept.
+    '''
+    data = []
+    story = []
     for line in lines:
-        line=line.decode('utf-8').strip()#this makes utf-8 decoding into some binary values for the incoming text 
-        nid,line=line.split(' ',1)#the split function has the second parameter maxsplit defined,which makes the total array split into two parts only
-        nid=int(nid)  #so ,nid and line are taken as two variables 
-        if nid==1:
-            story= []
+        line = line.decode('utf-8').strip() #this makes utf-8 decoding into some binary values for the incoming text 
+        nid, line = line.split(' ', 1) #the split function has the second parameter maxsplit defined,which makes the total array split into two parts only
+        nid = int(nid)                 #so ,nid and line are taken as two variables 
+        if nid == 1:
+            story = []
         if '\t' in line:
-            q,a,supporting=line.split('\t')
-            q=tokenize(q)#used to tokenize the question into keywords such that the related answer can be found from the keyword
-            if only_supporting: #selecting the related substory only
-                supporting=map(int,supporting.split()) #map applies a function to each item in the iterable
-                substory=[story[i-1] for i in supporting]
+            q, a, supporting = line.split('\t')
+            q = tokenize(q)
+            if only_supporting:
+                # Only select the related substory
+                supporting = map(int, supporting.split())
+                substory = [story[i - 1] for i in supporting]
             else:
-                [x for x in story if x] #x substory is derived from story
-            data.append((substory,q,a))
+                # Provide all the substories
+                substory = [x for x in story if x]
+            data.append((substory, q, a))
             story.append('')
         else:
-            sent=tokenize(line)
+            sent = tokenize(line)
             story.append(sent)
-            
-    return data 
-     
+    return data
+
+
 def get_stories(f, only_supporting=False, max_length=None):
     '''Given a file name, read the file, retrieve the stories,
     and then convert the sentences into a single story.
@@ -54,6 +69,8 @@ def get_stories(f, only_supporting=False, max_length=None):
     data = [(flatten(story), q, answer) for story, q, answer in data
             if not max_length or len(flatten(story)) < max_length]
     return data
+
+
 def vectorize_stories(data, word_idx, story_maxlen, query_maxlen):
     xs = []
     xqs = []
@@ -69,10 +86,8 @@ def vectorize_stories(data, word_idx, story_maxlen, query_maxlen):
         ys.append(y)
     return (pad_sequences(xs, maxlen=story_maxlen),
             pad_sequences(xqs, maxlen=query_maxlen), np.array(ys))
-   #padding means setting all to equal lengths
-      
-         
-RNN=recurrent.LSTM
+
+RNN = recurrent.LSTM
 EMBED_HIDDEN_SIZE = 50
 SENT_HIDDEN_SIZE = 100
 QUERY_HIDDEN_SIZE = 100
@@ -81,30 +96,45 @@ EPOCHS = 40
 print('RNN / Embed / Sent / Query = {}, {}, {}, {}'.format(RNN,
                                                            EMBED_HIDDEN_SIZE,
                                                            SENT_HIDDEN_SIZE,
-                                                           
+                                                           QUERY_HIDDEN_SIZE))
 
+try:
+    path = get_file('babi-tasks-v1-2.tar.gz',
+                    origin='https://s3.amazonaws.com/text-datasets/'
+                           'babi_tasks_1-20_v1-2.tar.gz')
+except:
+    print('Error downloading dataset, please download it manually:\n'
+          '$ wget http://www.thespermwhale.com/jaseweston/babi/tasks_1-20_v1-2'
+          '.tar.gz\n'
+          '$ mv tasks_1-20_v1-2.tar.gz ~/.keras/datasets/babi-tasks-v1-2.tar.gz')
+    raise
 
 # Default QA1 with 1000 samples
 # challenge = 'tasks_1-20_v1-2/en/qa1_single-supporting-fact_{}.txt'
 # QA1 with 10,000 samples
 # challenge = 'tasks_1-20_v1-2/en-10k/qa1_single-supporting-fact_{}.txt'
 # QA2 with 1000 samples
-
+challenge = 'tasks_1-20_v1-2/en/qa2_two-supporting-facts_{}.txt'
 # QA2 with 10,000 samples
 # challenge = 'tasks_1-20_v1-2/en-10k/qa2_two-supporting-facts_{}.txt'
-train =get_stories('train.txt') 
-test=get_stories('test.txt')
-vocab=set()
-for story,q,answer in train+test:
+with tarfile.open(path) as tar:
+    train = get_stories(tar.extractfile(challenge.format('train')))
+    test = get_stories(tar.extractfile(challenge.format('test')))
+
+vocab = set()
+for story, q, answer in train + test:
     vocab |= set(story + q + [answer])
-    
-vocab=sorted(vocab)    
-vocab_size==len(vocab)+1
+vocab = sorted(vocab)
+
+# Reserve 0 for masking via pad_sequences
+vocab_size = len(vocab) + 1
 word_idx = dict((c, i + 1) for i, c in enumerate(vocab))
 story_maxlen = max(map(len, (x for x, _, _ in train + test)))
 query_maxlen = max(map(len, (x for _, x, _ in train + test)))
+
 x, xq, y = vectorize_stories(train, word_idx, story_maxlen, query_maxlen)
-tx, txq, ty = vectorize_stories(test, word_idx, story_maxlen, query_maxlen) 
+tx, txq, ty = vectorize_stories(test, word_idx, story_maxlen, query_maxlen)
+
 print('vocab = {}'.format(vocab))
 print('x.shape = {}'.format(x.shape))
 print('xq.shape = {}'.format(xq.shape))
@@ -112,6 +142,7 @@ print('y.shape = {}'.format(y.shape))
 print('story_maxlen, query_maxlen = {}, {}'.format(story_maxlen, query_maxlen))
 
 print('Build model...')
+
 sentence = layers.Input(shape=(story_maxlen,), dtype='int32')
 encoded_sentence = layers.Embedding(vocab_size, EMBED_HIDDEN_SIZE)(sentence)
 encoded_sentence = layers.Dropout(0.3)(encoded_sentence)
@@ -137,7 +168,12 @@ model = get_model(
     pos_num=20,
     dropout=0.05,
 )
-
+token_dict = get_base_dict()  # A dict that contains some special tokens
+for pairs in vocab:
+    for token in pairs[0] + pairs[1]:
+        if token not in token_dict:
+            token_dict[token] = len(token_dict)
+token_list = list(token_dict.keys())  # Used for selecting a random word
 def _generator():
     while True:
         yield gen_batch_inputs(
@@ -159,11 +195,10 @@ model.fit_generator(
     epochs=100,
     validation_data=_generator(),
     validation_steps=100,
-    callbacks=[
-        keras.callbacks.EarlyStopping(monitor='val_loss', patience=5)
+    callbacks=[keras.callbacks.EarlyStopping(monitor='val_loss', patience=5)
     ],
 )
 
 loss, acc = model.evaluate([tx, txq], ty,
                            batch_size=BATCH_SIZE)
-print('Test loss / test accuracy = {:.4f} / {:.4f}'.format(loss, acc))      
+print('Test loss / test accuracy = {:.4f} / {:.4f}'.format(loss, acc))
